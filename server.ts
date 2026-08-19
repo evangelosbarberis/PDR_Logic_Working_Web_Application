@@ -26,7 +26,7 @@ import {
 } from './server/auth';
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = Number(process.env.PORT) || 3000;
 
 app.use(express.json({ limit: '25mb' }));
 
@@ -554,13 +554,60 @@ app.get('/api/vin-decode/:vin', async (req, res) => {
 // ==========================================
 
 app.post('/api/gemini/chat', async (req, res) => {
-  try {
-    const { message, history, estimateContext } = req.body;
+  const { message, history, estimateContext } = req.body;
 
-    if (!message) {
-      return res.status(400).json({ error: 'Message is required' });
+  if (!message) {
+    return res.status(400).json({ error: 'Message is required' });
+  }
+
+  // Rule-based fallback used whenever the Gemini API key isn't configured,
+  // or whenever a live API call fails for any reason (rate limit, network, etc).
+  const getLocalReply = (msg: string): string => {
+    const m = msg.toLowerCase();
+
+    if (/\b(hi|hello|hey)\b/.test(m) && m.length < 20) {
+      return `Hey there! I'm James, your PDR Logic Estimating Assistant. Ask me about coin sizing, oversize surcharges, condition markups, R&I labor, or your current${estimateContext ? ` ${estimateContext.vehicle}` : ''} valuation.`;
     }
+    if (m.includes('aluminum') || m.includes('alu') || m.includes('boron') || m.includes('high-strength') || m.includes('high strength')) {
+      return "Under G&G Paradigm 2025, aluminum and high-strength/boron steel panels both carry a +25% condition markup on the matrix base, since they require specialized heat and leverage technique to repair safely without cracking the panel.";
+    }
+    if (m.includes('laminated') || m.includes('double metal') || m.includes('inner brac')) {
+      return "Double metal / laminated panels (with inner bracing) get a +25% condition markup under G&G 2025 — the extra layer makes access and leverage significantly harder.";
+    }
+    if (m.includes('crease') || m.includes('sharp ridge') || m.includes('body line')) {
+      return "Creased dents, sharp ridge damage, or anything crossing a body line adds a +25% condition markup — these require much more precise, time-consuming technique than a standard round dent.";
+    }
+    if (m.includes('glue')) {
+      return "Glue pulling access adds a +25% condition markup under G&G 2025, since it's typically needed when a dent can't be reached with standard rods/tools from behind the panel.";
+    }
+    if (m.includes('obstruct') || m.includes('restricted access')) {
+      return "Obstructed or restricted-access repairs (tight structural bracing, limited rod access, etc.) carry a +25% condition markup on the matrix base.";
+    }
+    if (m.includes('double oversize') || m.includes('2x')) {
+      return "A 'Double Oversize' dent (roughly 2x+ a standard oversize, > 45mm) is priced as a flat +$100.00 per dent under G&G 2025, on top of the matrix base.";
+    }
+    if (m.includes('oversize') || m.includes('half dollar')) {
+      return "Oversized dents are impacts larger than a Half Dollar (> 30.61mm). Under G&G 2025 rules, each oversized dent adds a flat +$50.00 surcharge on top of the matrix base.";
+    }
+    if (m.includes('dime') || m.includes('nickel') || m.includes('quarter') || m.includes('coin')) {
+      return "Coin sizing under G&G 2025: Dime (Ø17.9mm), Nickel (Ø21.2mm), Quarter (Ø24.26mm), Half Dollar (Ø30.61mm). Anything bigger than a Half Dollar is Oversize (+$50), and roughly 2x that is Double Oversize (+$100).";
+    }
+    if (m.includes('r&i') || m.includes('ri labor') || m.includes('labor') || m.includes('headliner') || m.includes('trim')) {
+      return "R&I (Remove & Install) labor is billed at the shop's standard hourly rate — $75.00/hr by default in this estimate — for tasks like headliner drops, trim removal, or antenna/molding R&I needed to access panels.";
+    }
+    if (m.includes('vin')) {
+      return "You can decode a VIN using the NHTSA VIN Scanner from the header — either type it in manually or use the camera scanner, which reads the barcode/QR code off the door jamb sticker or window sticker automatically.";
+    }
+    if (m.includes('matrix') || m.includes('bracket') || m.includes('pricing')) {
+      return "The G&G Paradigm 2025 matrix prices dents in count brackets per panel: 1-5, 6-15, 16-30, 31-50, 51-75, 76-100, 101-125, 126-150, 151-175, 176-200. More dents on a panel move it into a higher bracket at a lower per-dent rate.";
+    }
+    if (estimateContext && (m.includes('total') || m.includes('estimate') || m.includes('summary') || m.includes('analyz'))) {
+      return `For this ${estimateContext.vehicle || 'vehicle'}, the current appraisal shows ${estimateContext.totalDentCount || 0} hail dents (${estimateContext.oversizeDentCount || 0} oversize) with a Grand Valuation of $${(estimateContext.grandTotal || 0).toLocaleString()}.`;
+    }
+    return "I'm James, your PDR Logic Estimating Assistant. I can help with coin sizing, oversize/double-oversize surcharges, the +25% condition markups (aluminum, boron, laminated, creased, glue pull, obstructed access), R&I labor rates, or a summary of your current estimate — what do you need?";
+  };
 
+  try {
     const ai = getGeminiClient();
 
     const systemInstruction = `You are "James", the dedicated AI PDR (Paintless Dent Repair) Hail Estimating Specialist for PDR Logic.
@@ -588,18 +635,7 @@ ${estimateContext ? JSON.stringify(estimateContext, null, 2) : 'No active vehicl
 Provide clear, concise, actionable, and friendly guidance.`;
 
     if (!ai) {
-      const lowerMsg = message.toLowerCase();
-      let reply = "Hello! I'm James, your PDR Logic Estimating Assistant. I can help you with G&G Paradigm 2025 matrix pricing, oversize dent surcharges (+$50/dent), 25% condition markups, and R&I labor calculations.";
-      
-      if (lowerMsg.includes('aluminum') || lowerMsg.includes('alu')) {
-        reply = "According to the G&G Paradigm 2025 standard, aluminum panels carry a mandatory +25% condition markup because aluminum requires specialized heat and leverage techniques.";
-      } else if (lowerMsg.includes('oversize') || lowerMsg.includes('half dollar')) {
-        reply = "Oversized dents are impacts larger than a Half Dollar (> 30.61mm). Under G&G 2025 rules, each oversized dent adds a flat +$50.00 surcharge on top of the matrix base.";
-      } else if (estimateContext && (lowerMsg.includes('total') || lowerMsg.includes('estimate') || lowerMsg.includes('summary'))) {
-        reply = `For this ${estimateContext.vehicle || 'vehicle'}, the current appraisal shows ${estimateContext.totalDentCount || 0} hail dents with a Grand Valuation of $${(estimateContext.grandTotal || 0).toLocaleString()}.`;
-      }
-
-      return res.json({ reply, source: 'local_rule_engine' });
+      return res.json({ reply: getLocalReply(message), source: 'local_rule_engine' });
     }
 
     const contents: any[] = [];
@@ -631,8 +667,10 @@ Provide clear, concise, actionable, and friendly guidance.`;
     });
   } catch (err: any) {
     console.error('Gemini James Assistant Error:', err);
+    // Fall back to the same rule-based engine used when no API key is configured,
+    // so a live API failure still gives a relevant answer instead of one fixed string.
     res.json({
-      reply: "I am James, your PDR Logic Assistant. Based on the G&G Paradigm 2025 matrix, make sure to verify coin sizing, apply +$50 for oversized dents, and toggle +25% markups for aluminum or glue-pulling access.",
+      reply: getLocalReply(message),
       source: 'fallback',
     });
   }

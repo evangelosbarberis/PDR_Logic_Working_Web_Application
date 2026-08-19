@@ -17,6 +17,8 @@
     "@types/nodemailer": "^8.0.1",
     "@types/three": "^0.185.4",
     "@vitejs/plugin-react": "^5.0.4",
+    "@zxing/browser": "^0.1.5",
+    "@zxing/library": "^0.21.3",
     "bcryptjs": "^3.0.3",
     "canvas-confetti": "^1.9.4",
     "dotenv": "^17.2.3",

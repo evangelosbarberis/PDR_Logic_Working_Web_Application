@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { VehicleInfo } from '../types';
 import { SAMPLE_VINS } from '../data/sampleVehicles';
 import { deduceVehicleDetails, getHexColor } from '../data/vehicleSpecs';
+import { BrowserMultiFormatReader, IScannerControls } from '@zxing/browser';
+import { BarcodeFormat, DecodeHintType, NotFoundException } from '@zxing/library';
 import { 
   X, 
   Search, 
@@ -13,10 +15,18 @@ import {
   ShieldCheck, 
   Sparkles, 
   RefreshCw,
-  QrCode,
-  Zap,
-  Cpu
 } from 'lucide-react';
+
+// Characters I, O, Q are never used in a real VIN (to avoid confusion with 1, 0)
+const VIN_CANDIDATE_REGEX = /[A-HJ-NPR-Z0-9]{17}/;
+
+// Pull the most VIN-like 17-char run out of whatever text the barcode/QR decoded to.
+// Window-sticker barcodes often encode extra text (dealer codes, field labels) around the VIN.
+function extractVinFromScan(rawText: string): string | null {
+  const cleaned = rawText.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const match = cleaned.match(VIN_CANDIDATE_REGEX);
+  return match ? match[0] : null;
+}
 
 interface VinScannerModalProps {
   currentVehicle: VehicleInfo;
@@ -39,8 +49,28 @@ export const VinScannerModal: React.FC<VinScannerModalProps> = ({
   
   // Camera Barcode Scanning State
   const [isScanning, setIsScanning] = useState(false);
+  const [scanStatus, setScanStatus] = useState<string>('Point the camera at the VIN barcode or QR code');
+  const [cameraDenied, setCameraDenied] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const scanControlsRef = useRef<IScannerControls | null>(null);
+  const readerRef = useRef<BrowserMultiFormatReader | null>(null);
+
+  // Lazily build a zxing reader configured for the barcode/QR formats VIN stickers actually use
+  const getReader = () => {
+    if (!readerRef.current) {
+      const hints = new Map();
+      hints.set(DecodeHintType.POSSIBLE_FORMATS, [
+        BarcodeFormat.QR_CODE,
+        BarcodeFormat.CODE_39,
+        BarcodeFormat.CODE_128,
+        BarcodeFormat.PDF_417,
+        BarcodeFormat.DATA_MATRIX,
+      ]);
+      readerRef.current = new BrowserMultiFormatReader(hints);
+    }
+    return readerRef.current;
+  };
 
   // Decode VIN using NHTSA vPIC Public API
   const decodeVin = async (vinToDecode: string) => {
@@ -150,29 +180,60 @@ export const VinScannerModal: React.FC<VinScannerModalProps> = ({
     }
   };
 
-  // Start Camera Scanning
+  // Start Camera Scanning with live barcode/QR decoding
   const startCameraScanner = async () => {
     setIsScanning(true);
     setErrorMsg(null);
+    setCameraDenied(null);
+    setScanStatus('Point the camera at the VIN barcode or QR code');
     try {
-      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'environment' },
-        });
-        streamRef.current = stream;
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          videoRef.current.play();
-        }
-      } else {
-        throw new Error('Camera access not supported');
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('Camera access is not supported in this browser.');
       }
-    } catch (e) {
-      console.warn('Camera error, showing simulated barcode detector overlay:', e);
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' } },
+      });
+      streamRef.current = stream;
+
+      if (!videoRef.current) return;
+
+      const reader = getReader();
+      const controls = await reader.decodeFromStream(stream, videoRef.current, (result, err) => {
+        if (result) {
+          const extractedVin = extractVinFromScan(result.getText());
+          if (extractedVin) {
+            setScanStatus(`Detected: ${extractedVin}`);
+            handleSimulateScanPreset(extractedVin);
+          } else {
+            // Scanned something, but it doesn't look like a 17-char VIN - keep scanning
+            setScanStatus('Scanned a code, but it doesn\u2019t look like a VIN. Keep trying...');
+          }
+          return;
+        }
+        // NotFoundException fires continuously between successful reads - that's normal, not an error
+        if (err && !(err instanceof NotFoundException)) {
+          console.warn('Barcode decode error:', err);
+        }
+      });
+      scanControlsRef.current = controls;
+    } catch (e: any) {
+      console.warn('Camera error:', e);
+      setIsScanning(false);
+      if (e?.name === 'NotAllowedError' || e?.name === 'PermissionDeniedError') {
+        setCameraDenied('Camera access was blocked. Please allow camera permission for this site in your browser settings and try again.');
+      } else if (e?.name === 'NotFoundError') {
+        setCameraDenied('No camera was found on this device.');
+      } else {
+        setCameraDenied(e?.message || 'Could not access the camera on this device.');
+      }
     }
   };
 
   const stopCameraScanner = () => {
+    if (scanControlsRef.current) {
+      scanControlsRef.current.stop();
+      scanControlsRef.current = null;
+    }
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
@@ -257,19 +318,13 @@ export const VinScannerModal: React.FC<VinScannerModalProps> = ({
                   {/* Red Laser Bar Animation */}
                   <div className="w-full h-0.5 bg-[#FF4E4E] shadow-[0_0_8px_#FF4E4E] animate-pulse my-12" />
                 </div>
-                <p className="text-xs text-[#E0DED7] bg-[#0F0F0F]/80 px-3.5 py-1 rounded-full mt-3 font-medium border border-[#2D2D2D]">
-                  Align VIN barcode or door jamb sticker in frame
+                <p className="text-xs text-[#E0DED7] bg-[#0F0F0F]/80 px-3.5 py-1 rounded-full mt-3 font-medium border border-[#2D2D2D] text-center max-w-[90%]">
+                  {scanStatus}
                 </p>
               </div>
 
-              {/* Quick Scan action or cancel */}
-              <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between gap-2 z-10">
-                <button
-                  onClick={() => handleSimulateScanPreset('WDC0G4KB4HF214589')}
-                  className="bg-[#C5A059] hover:bg-[#b59049] text-[#0F0F0F] text-xs font-bold px-4 py-2 rounded-full flex items-center gap-1.5 shadow-lg"
-                >
-                  <Zap className="w-3.5 h-3.5" /> Auto-Capture Sheet VIN
-                </button>
+              {/* Cancel */}
+              <div className="absolute bottom-3 left-3 right-3 flex items-center justify-end gap-2 z-10">
                 <button
                   onClick={stopCameraScanner}
                   className="bg-[#1F1F1F]/90 text-[#E0DED7] text-xs font-semibold px-4 py-2 rounded-full border border-[#3D3D3D] hover:bg-[#2D2D2D]"
@@ -333,6 +388,14 @@ export const VinScannerModal: React.FC<VinScannerModalProps> = ({
                   <Camera className="w-4 h-4" />
                 </button>
               </div>
+            </div>
+          )}
+
+          {/* Camera Permission / Availability Errors */}
+          {cameraDenied && (
+            <div className="bg-[#1F1F1F] border border-[#FF4E4E]/60 text-[#FF4E4E] p-3.5 rounded-xl text-xs flex items-center gap-2.5">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{cameraDenied}</span>
             </div>
           )}
 

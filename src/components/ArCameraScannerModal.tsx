@@ -76,7 +76,7 @@ export const ArCameraScannerModal: React.FC<ArCameraScannerModalProps> = ({
 }) => {
   const [activePanelId, setActivePanelId] = useState<PanelId>(initialPanelId);
   const [selectedCoinSize, setSelectedCoinSize] = useState<DentSize | 'oversize' | 'doubleOversize'>('quarter');
-  const [arMode, setArMode] = useState<'3d_hologram' | 'optical_lens' | 'depth_heatmap'>('3d_hologram');
+  const [arMode, setArMode] = useState<'3d_hologram' | 'optical_lens' | 'depth_heatmap'>('optical_lens');
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [torchOn, setTorchOn] = useState(false);
@@ -129,17 +129,32 @@ export const ArCameraScannerModal: React.FC<ArCameraScannerModalProps> = ({
   // Start Camera Stream with optimal non-distorted constraints
   const startCamera = async () => {
     setCameraError(null);
-    try {
-      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: { ideal: 'environment' },
-            width: { ideal: 1920, min: 1280 },
-            height: { ideal: 1080, min: 720 },
-            aspectRatio: { ideal: 16 / 9 },
-          },
-          audio: false,
-        });
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      setCameraError('Camera access is not available in this browser. Try Chrome, Safari, or Edge over HTTPS.');
+      setIsCameraActive(false);
+      return;
+    }
+
+    // Try for a nice high-res feed first, using "ideal" only (no hard "min") so we
+    // don't get rejected by devices/cameras that can't hit 1080p.
+    const attempts: MediaStreamConstraints[] = [
+      {
+        video: {
+          facingMode: { ideal: 'environment' },
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+        },
+        audio: false,
+      },
+      // Fallback: bare-bones constraints for maximum device compatibility
+      { video: { facingMode: 'environment' }, audio: false },
+      { video: true, audio: false },
+    ];
+
+    let lastErr: any = null;
+    for (const constraints of attempts) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
         streamRef.current = stream;
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
@@ -148,15 +163,24 @@ export const ArCameraScannerModal: React.FC<ArCameraScannerModalProps> = ({
           };
         }
         setIsCameraActive(true);
-      } else {
-        throw new Error('Camera access is not available in this browser environment.');
+        return;
+      } catch (err: any) {
+        lastErr = err;
+        // OverconstrainedError means try the next, looser set of constraints
+        if (err?.name !== 'OverconstrainedError') break;
       }
-    } catch (err: any) {
-      console.warn('Camera initialization notice:', err);
-      setCameraError(
-        'Camera stream not active in preview container. Full interactive 3D Spatial Hologram and Laser Caliper inspection active.'
-      );
-      setIsCameraActive(false);
+    }
+
+    console.warn('Camera initialization error:', lastErr);
+    setIsCameraActive(false);
+    if (lastErr?.name === 'NotAllowedError' || lastErr?.name === 'PermissionDeniedError') {
+      setCameraError('Camera access was blocked. Allow camera permission for this site in your browser settings, then tap "Activate Camera Feed".');
+    } else if (lastErr?.name === 'NotFoundError' || lastErr?.name === 'DevicesNotFoundError') {
+      setCameraError('No camera was found on this device.');
+    } else if (lastErr?.name === 'NotReadableError') {
+      setCameraError('The camera is already in use by another app or browser tab. Close it and try again.');
+    } else {
+      setCameraError(lastErr?.message || 'Could not access the camera on this device.');
     }
   };
 
@@ -796,14 +820,14 @@ export const ArCameraScannerModal: React.FC<ArCameraScannerModalProps> = ({
             />
           ) : (
             <div className="absolute inset-0 w-full h-full bg-gradient-to-b from-[#0F0F14] via-[#09090C] to-[#050507] flex flex-col items-center justify-center p-6 text-center pointer-events-none">
-              <div className="w-16 h-16 rounded-full bg-[#18181D] border border-[#C5A059]/40 flex items-center justify-center text-[#C5A059] mb-4 shadow-xl">
-                <Car className="w-8 h-8" />
+              <div className={`w-16 h-16 rounded-full bg-[#18181D] border flex items-center justify-center mb-4 shadow-xl ${cameraError ? 'border-[#FF4E4E]/50 text-[#FF4E4E]' : 'border-[#C5A059]/40 text-[#C5A059]'}`}>
+                {cameraError ? <AlertTriangle className="w-8 h-8" /> : <Car className="w-8 h-8" />}
               </div>
               <h3 className="text-lg font-bold text-[#E0DED7] font-serif mb-1">
-                AR 3D Spatial Hologram Active
+                {cameraError ? 'Camera Unavailable' : 'Live Camera Not Started'}
               </h3>
-              <p className="text-xs text-[#8E8E8E] max-w-md mb-4">
-                Interactive real-time 3D vehicle model with 1-tap panel pinning and hail matrix integration.
+              <p className={`text-xs max-w-md mb-4 ${cameraError ? 'text-[#FF4E4E]' : 'text-[#8E8E8E]'}`}>
+                {cameraError || 'Tap below to open your camera and tap directly on the vehicle to mark dents.'}
               </p>
               <button
                 onClick={(e) => {
@@ -813,7 +837,7 @@ export const ArCameraScannerModal: React.FC<ArCameraScannerModalProps> = ({
                 className="pointer-events-auto bg-[#C5A059] hover:bg-[#B38F48] text-[#0F0F0F] font-bold text-xs px-5 py-2.5 rounded-full transition-transform active:scale-95 flex items-center gap-2 shadow-lg"
               >
                 <Camera className="w-4 h-4" />
-                <span>Activate Camera Feed</span>
+                <span>{cameraError ? 'Try Again' : 'Activate Camera Feed'}</span>
               </button>
             </div>
           )}
