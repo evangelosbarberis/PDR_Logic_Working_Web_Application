@@ -33,7 +33,7 @@ export const JamesAiAssistant: React.FC<JamesAiAssistantProps> = ({ estimate }) 
     {
       id: 'welcome',
       role: 'model',
-      text: `Hello! I'm James, your AI PDR Estimator Specialist. I'm connected to the D&G Paradigm 2025 matrix rules. Ask me about dent counts, coin sizing, +25% condition markups, or analyze your current ${estimate.vehicle.year || ''} ${estimate.vehicle.make || ''} ${estimate.vehicle.model || ''} valuation.`,
+      text: `Hello! I'm James, your AI PDR Estimator Specialist. I'm connected to the G&G Paradigm 2025 matrix rules. Ask me about dent counts, coin sizing, +25% condition markups, or analyze your current ${estimate.vehicle.year || ''} ${estimate.vehicle.make || ''} ${estimate.vehicle.model || ''} valuation.`,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     },
   ]);
@@ -104,7 +104,7 @@ export const JamesAiAssistant: React.FC<JamesAiAssistantProps> = ({ estimate }) 
       const botMsg: Message = {
         id: `bot_${Date.now()}`,
         role: 'model',
-        text: data.reply || "I analyzed your request according to the D&G Paradigm 2025 standard. Let me know if you need panel-specific adjustments.",
+        text: data.reply || "I analyzed your request according to the G&G Paradigm 2025 standard. Let me know if you need panel-specific adjustments.",
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
 
@@ -114,7 +114,7 @@ export const JamesAiAssistant: React.FC<JamesAiAssistantProps> = ({ estimate }) 
       const fallbackMsg: Message = {
         id: `bot_err_${Date.now()}`,
         role: 'model',
-        text: "I'm reviewing the D&G Paradigm 2025 matrix. For oversized dents (> Half Dollar), remember to add +$50/dent. Aluminum panels incur a +25% markup on matrix base.",
+        text: "I'm reviewing the G&G Paradigm 2025 matrix. For oversized dents (> Half Dollar), remember to add +$50/dent. Aluminum panels incur a +25% markup on matrix base.",
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
       setMessages(prev => [...prev, fallbackMsg]);

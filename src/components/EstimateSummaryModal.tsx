@@ -108,7 +108,7 @@ export const EstimateSummaryModal: React.FC<EstimateSummaryModalProps> = ({
   const handleOpenGmailWeb = () => {
     handleDownloadPdf();
     const subject = `[PDF Appraisal] PDR Logic Hail Damage Valuation: ${estimate.vehicle.year || ''} ${estimate.vehicle.make || ''} ${estimate.vehicle.model || ''} [RO: ${estimate.roNumber}]`;
-    const body = `PDR LOGIC HAIL DAMAGE VALUATION REPORT\n==============================================\nWork Order / RO: ${estimate.roNumber}\nDate: ${new Date(estimate.createdAt).toLocaleDateString()}\nStatus: ${estimate.status.toUpperCase()}\n\nVEHICLE SPECS:\n--------------\nVehicle: ${estimate.vehicle.year} ${estimate.vehicle.make} ${estimate.vehicle.model}\nVIN: ${estimate.vehicle.vin || 'N/A'}\nColor / Finish: ${estimate.vehicle.color || 'OEM Finish'}\nBody / Doors: ${estimate.vehicle.bodyClass || 'Sedan'} (${estimate.vehicle.doors || '4'} Doors)\n\nCUSTOMER & CLAIM:\n-----------------\nCustomer: ${estimate.customerName || 'N/A'}\nPhone: ${estimate.customerPhone || 'N/A'}\nInsurer: ${estimate.insuranceCompany || 'USAA'}\nClaim #: ${estimate.claimNumber || 'N/A'}\nTechnician: ${estimate.technicianName}\n\nPANEL BREAKDOWN (D&G PARADIGM 2025 MATRIX):\n------------------------------------------\n${panelsWithData.map(id => {
+    const body = `PDR LOGIC HAIL DAMAGE VALUATION REPORT\n==============================================\nWork Order / RO: ${estimate.roNumber}\nDate: ${new Date(estimate.createdAt).toLocaleDateString()}\nStatus: ${estimate.status.toUpperCase()}\n\nVEHICLE SPECS:\n--------------\nVehicle: ${estimate.vehicle.year} ${estimate.vehicle.make} ${estimate.vehicle.model}\nVIN: ${estimate.vehicle.vin || 'N/A'}\nColor / Finish: ${estimate.vehicle.color || 'OEM Finish'}\nBody / Doors: ${estimate.vehicle.bodyClass || 'Sedan'} (${estimate.vehicle.doors || '4'} Doors)\n\nCUSTOMER & CLAIM:\n-----------------\nCustomer: ${estimate.customerName || 'N/A'}\nPhone: ${estimate.customerPhone || 'N/A'}\nInsurer: ${estimate.insuranceCompany || 'USAA'}\nClaim #: ${estimate.claimNumber || 'N/A'}\nTechnician: ${estimate.technicianName}\n\nPANEL BREAKDOWN (G&G PARADIGM 2025 MATRIX):\n------------------------------------------\n${panelsWithData.map(id => {
       const p = estimate.panels[id];
       const cfg = PANEL_CONFIGS[id];
       const coin = COIN_DIMENSIONS[p.primaryDentSize || 'dime'];
@@ -474,7 +474,7 @@ export const EstimateSummaryModal: React.FC<EstimateSummaryModalProps> = ({
 
           {/* Valuation Summary Box */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* D&G Paradigm 2025 Matrix Details */}
+            {/* G&G Paradigm 2025 Matrix Details */}
             <div className="bg-[#1F1F1F] p-4 rounded-xl border border-[#2D2D2D] space-y-2">
               <div className="text-xs font-bold text-[#C5A059] uppercase tracking-wider">
                 Matrix Guidelines &amp; Terms

@@ -564,10 +564,10 @@ app.post('/api/gemini/chat', async (req, res) => {
     const ai = getGeminiClient();
 
     const systemInstruction = `You are "James", the dedicated AI PDR (Paintless Dent Repair) Hail Estimating Specialist for PDR Logic.
-You are an expert in the D&G Paradigm 2025 Hail Matrix standard, automotive panel anatomy, insurance appraisal workflows, and pricing logic.
+You are an expert in the G&G Paradigm 2025 Hail Matrix standard, automotive panel anatomy, insurance appraisal workflows, and pricing logic.
 
 KEY PDR RULES & STANDARDS:
-1. D&G Paradigm 2025 Matrix:
+1. G&G Paradigm 2025 Matrix:
    - Panel pricing brackets: 1-5, 6-15, 16-30, 31-50, 51-75, 76-100, 101-125, 126-150, 151-175, 176-200.
    - Coin Sizing: Dime (Ø 17.9mm), Nickel (Ø 21.2mm), Quarter (Ø 24.26mm), Half Dollar (Ø 30.61mm).
 2. Oversize Dents:
@@ -589,12 +589,12 @@ Provide clear, concise, actionable, and friendly guidance.`;
 
     if (!ai) {
       const lowerMsg = message.toLowerCase();
-      let reply = "Hello! I'm James, your PDR Logic Estimating Assistant. I can help you with D&G Paradigm 2025 matrix pricing, oversize dent surcharges (+$50/dent), 25% condition markups, and R&I labor calculations.";
+      let reply = "Hello! I'm James, your PDR Logic Estimating Assistant. I can help you with G&G Paradigm 2025 matrix pricing, oversize dent surcharges (+$50/dent), 25% condition markups, and R&I labor calculations.";
       
       if (lowerMsg.includes('aluminum') || lowerMsg.includes('alu')) {
-        reply = "According to the D&G Paradigm 2025 standard, aluminum panels carry a mandatory +25% condition markup because aluminum requires specialized heat and leverage techniques.";
+        reply = "According to the G&G Paradigm 2025 standard, aluminum panels carry a mandatory +25% condition markup because aluminum requires specialized heat and leverage techniques.";
       } else if (lowerMsg.includes('oversize') || lowerMsg.includes('half dollar')) {
-        reply = "Oversized dents are impacts larger than a Half Dollar (> 30.61mm). Under D&G 2025 rules, each oversized dent adds a flat +$50.00 surcharge on top of the matrix base.";
+        reply = "Oversized dents are impacts larger than a Half Dollar (> 30.61mm). Under G&G 2025 rules, each oversized dent adds a flat +$50.00 surcharge on top of the matrix base.";
       } else if (estimateContext && (lowerMsg.includes('total') || lowerMsg.includes('estimate') || lowerMsg.includes('summary'))) {
         reply = `For this ${estimateContext.vehicle || 'vehicle'}, the current appraisal shows ${estimateContext.totalDentCount || 0} hail dents with a Grand Valuation of $${(estimateContext.grandTotal || 0).toLocaleString()}.`;
       }
@@ -632,7 +632,7 @@ Provide clear, concise, actionable, and friendly guidance.`;
   } catch (err: any) {
     console.error('Gemini James Assistant Error:', err);
     res.json({
-      reply: "I am James, your PDR Logic Assistant. Based on the D&G Paradigm 2025 matrix, make sure to verify coin sizing, apply +$50 for oversized dents, and toggle +25% markups for aluminum or glue-pulling access.",
+      reply: "I am James, your PDR Logic Assistant. Based on the G&G Paradigm 2025 matrix, make sure to verify coin sizing, apply +$50 for oversized dents, and toggle +25% markups for aluminum or glue-pulling access.",
       source: 'fallback',
     });
   }

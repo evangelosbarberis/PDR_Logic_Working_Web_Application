@@ -594,7 +594,7 @@ export const ArCameraScannerModal: React.FC<ArCameraScannerModalProps> = ({
     ctx.fillStyle = '#E0DED7';
     ctx.font = '16px sans-serif';
     ctx.fillText(
-      `${vehicle.year} ${vehicle.make} ${vehicle.model} (VIN: ${vehicle.vin || 'N/A'}) • ${arPins.length} Hail Dents Logged • D&G Paradigm 2025 Standard • ${new Date().toLocaleString()}`,
+      `${vehicle.year} ${vehicle.make} ${vehicle.model} (VIN: ${vehicle.vin || 'N/A'}) • ${arPins.length} Hail Dents Logged • G&G Paradigm 2025 Standard • ${new Date().toLocaleString()}`,
       65,
       canvas.height - 56
     );

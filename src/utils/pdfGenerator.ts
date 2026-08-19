@@ -77,7 +77,7 @@ export function generateEstimatePdf(estimate: Estimate, options: PdfOptions = { 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7);
   doc.setTextColor(textMuted[0], textMuted[1], textMuted[2]);
-  doc.text('Precision Paintless Dent Repair • Certified D&G Paradigm 2025 Standard', margin + 12, margin + 41);
+  doc.text('Precision Paintless Dent Repair • Certified G&G Paradigm 2025 Standard', margin + 12, margin + 41);
 
   // Right Header Metadata
   doc.setFont('helvetica', 'bold');
@@ -264,7 +264,7 @@ export function generateEstimatePdf(estimate: Estimate, options: PdfOptions = { 
   doc.setFontSize(6.2);
   doc.setTextColor(textMuted[0], textMuted[1], textMuted[2]);
   const termsLines = [
-    '• Valuation computed strictly according to D&G Paradigm 2025 PDR pricing matrix.',
+    '• Valuation computed strictly according to G&G Paradigm 2025 PDR pricing matrix.',
     '• Condition markups represent high tensile aluminum, double metal, glue-pull only access.',
     '• R&I operations calculated according to standard Motor/Mitchell mechanical labor times.',
     '• Workmanship guaranteed against paint checking, fracturing, or surface deterioration.',
@@ -294,7 +294,7 @@ export function generateEstimatePdf(estimate: Estimate, options: PdfOptions = { 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
   doc.setTextColor(gold[0], gold[1], gold[2]);
-  doc.text('D&G PARADIGM 2025 TOTALS', financialBoxX + 10, bottomSectionY + 13);
+  doc.text('G&G PARADIGM 2025 TOTALS', financialBoxX + 10, bottomSectionY + 13);
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7);

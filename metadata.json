@@ -1,6 +1,6 @@
 {
   "name": "PDR Logic - Hail Damage Estimator & 3D Vehicle Inspector",
-  "description": "Professional 3D vehicle hail damage estimator, NHTSA VIN scanner & decoder, D&G Paradigm 2025 matrix pricing engine, panel photo markup, and repair ledger for PDR technicians and estimators.",
+  "description": "Professional 3D vehicle hail damage estimator, NHTSA VIN scanner & decoder, G&G Paradigm 2025 matrix pricing engine, panel photo markup, and repair ledger for PDR technicians and estimators.",
   "requestFramePermissions": ["camera"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

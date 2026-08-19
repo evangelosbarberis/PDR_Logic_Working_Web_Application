@@ -193,7 +193,7 @@ export const Header: React.FC<HeaderProps> = ({
             )}
           </button>
 
-          {/* D&G 2025 Matrix Reference Button */}
+          {/* G&G 2025 Matrix Reference Button */}
           <button
             id="open-matrix-reference-btn"
             onClick={onOpenMatrixModal}
