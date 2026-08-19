@@ -723,6 +723,10 @@ export default function App() {
           estimate={estimate}
           onClose={() => setIsReportModalOpen(false)}
           onSendEmail={handleSendReportEmail}
+          onRestart={() => {
+            setIsReportModalOpen(false);
+            handleNewEstimate();
+          }}
         />
       )}
 

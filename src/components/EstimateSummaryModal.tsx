@@ -13,17 +13,19 @@ import {
   AlertTriangle, 
   Send, 
   Loader2,
-  ExternalLink,
   Share2,
   Sun,
   Moon,
-  Sparkles
+  Sparkles,
+  RefreshCw,
 } from 'lucide-react';
 
 interface EstimateSummaryModalProps {
   estimate: Estimate;
   onClose: () => void;
   onSendEmail: (email: string, pdfBase64?: string, fileName?: string) => Promise<any>;
+  /** Called when the user confirms they're done and wants to start the next inspection. */
+  onRestart: () => void;
 }
 
 const MARKUP_NAMES: Record<MarkupType, string> = {
@@ -39,6 +41,7 @@ export const EstimateSummaryModal: React.FC<EstimateSummaryModalProps> = ({
   estimate,
   onClose,
   onSendEmail,
+  onRestart,
 }) => {
   const [recipientEmail, setRecipientEmail] = useState(
     estimate.customerEmail || 'evangelosneobarberis@gmail.com'
@@ -64,18 +67,6 @@ export const EstimateSummaryModal: React.FC<EstimateSummaryModalProps> = ({
       console.error('Error generating PDF:', err);
     } finally {
       setIsGeneratingPdf(false);
-    }
-  };
-
-  // 2. Direct PDF Preview Handler
-  const handlePreviewPdf = () => {
-    try {
-      const { blob } = generateEstimatePdf(estimate, { theme: pdfTheme });
-      const url = URL.createObjectURL(blob);
-      window.open(url, '_blank');
-    } catch (err) {
-      console.error('Error opening PDF preview:', err);
-      window.print();
     }
   };
 
@@ -264,13 +255,6 @@ export const EstimateSummaryModal: React.FC<EstimateSummaryModalProps> = ({
                 <span>Save 1-Page PDF</span>
               </button>
 
-              <button
-                onClick={handlePreviewPdf}
-                className="bg-[#141414] hover:bg-[#252525] text-[#C5A059] border border-[#3D3D3D] hover:border-[#C5A059] text-xs font-semibold px-3 py-2 rounded-full transition-colors flex items-center gap-1.5 whitespace-nowrap"
-              >
-                <ExternalLink className="w-3.5 h-3.5" />
-                <span>Preview</span>
-              </button>
             </div>
           </div>
 
@@ -529,83 +513,104 @@ export const EstimateSummaryModal: React.FC<EstimateSummaryModalProps> = ({
             </div>
           </div>
 
-          {/* Email Dispatch & Sharing Options */}
-          <div className="bg-[#1F1F1F] p-5 rounded-xl border border-[#2D2D2D] space-y-4">
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <div className="text-xs font-bold text-[#E0DED7] uppercase tracking-wider flex items-center gap-1.5">
-                <Mail className="w-4 h-4 text-[#C5A059]" />
-                Direct Email Delivery (1-Page PDF Attached)
+          {/* Email Dispatch & Sharing Options, OR the post-submit confirmation */}
+          {emailStatus === 'success' ? (
+            /* Submitted Confirmation - replaces the form once the report has gone out */
+            <div className="bg-[#1F1F1F] p-6 rounded-xl border border-[#C5A059]/50 flex flex-col items-center text-center gap-3">
+              <div className="w-14 h-14 rounded-full bg-[#C5A059]/15 border border-[#C5A059]/40 flex items-center justify-center text-[#C5A059]">
+                <CheckCircle2 className="w-7 h-7" />
               </div>
-              {emailStatus === 'success' && (
-                <span className="text-xs text-[#C5A059] flex items-center gap-1.5 font-semibold bg-[#141414] px-3 py-1 rounded-full border border-[#C5A059]/40">
-                  <CheckCircle2 className="w-4 h-4" /> 1-Page PDF Successfully Generated &amp; Dispatched!
-                </span>
-              )}
-              {emailStatus === 'error' && (
-                <span className="text-xs text-[#FF4E4E] flex items-center gap-1.5 font-semibold bg-[#141414] px-3 py-1 rounded-full border border-[#FF4E4E]/40">
-                  <AlertTriangle className="w-4 h-4" /> {statusDetails || 'Error sending email'}
-                </span>
-              )}
+              <div>
+                <div className="text-sm font-bold text-[#E0DED7]">Report Submitted!</div>
+                <div className="text-xs text-[#8E8E8E] mt-1 max-w-md">
+                  {statusDetails || `Sent to ${recipientEmail.trim()}.`}
+                </div>
+              </div>
+
+              <button
+                id="submit-and-restart-btn"
+                onClick={onRestart}
+                className="mt-2 w-full sm:w-auto bg-[#C5A059] hover:bg-[#b59049] text-[#0F0F0F] font-bold text-xs px-8 py-3 rounded-full transition-all flex items-center justify-center gap-2 shadow-md active:scale-95"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Submit &amp; Start New Inspection
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setEmailStatus('idle')}
+                className="text-[10px] text-[#8E8E8E] hover:text-[#E0DED7] underline underline-offset-2"
+              >
+                Not done yet, send to another recipient
+              </button>
             </div>
-
-            {statusDetails && emailStatus === 'success' && (
-              <div className="text-xs text-[#C5A059] bg-[#141414]/90 p-3 rounded-lg border border-[#C5A059]/30">
-                {statusDetails}
-              </div>
-            )}
-
-            <form onSubmit={handleSend} className="flex flex-col gap-3">
-              <div className="flex flex-col sm:flex-row items-center gap-2">
-                <input
-                  id="report-recipient-email-input"
-                  type="email"
-                  required
-                  placeholder="evangelosneobarberis@gmail.com, insurance adjuster, or customer email"
-                  value={recipientEmail}
-                  onChange={e => setRecipientEmail(e.target.value)}
-                  className="w-full sm:flex-1 bg-[#141414] border border-[#2D2D2D] text-[#E0DED7] text-xs px-4 py-3 rounded-full focus:outline-none focus:border-[#C5A059] placeholder-[#555]"
-                />
-                <button
-                  id="send-report-server-btn"
-                  type="submit"
-                  disabled={isSending || !recipientEmail.trim()}
-                  className="w-full sm:w-auto bg-[#C5A059] hover:bg-[#b59049] disabled:opacity-50 text-[#0F0F0F] font-bold text-xs px-6 py-3 rounded-full transition-all flex items-center justify-center gap-2 whitespace-nowrap shadow-md active:scale-95"
-                >
-                  {isSending ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Send className="w-4 h-4" />
-                  )}
-                  Email 1-Page PDF
-                </button>
+          ) : (
+            <div className="bg-[#1F1F1F] p-5 rounded-xl border border-[#2D2D2D] space-y-4">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="text-xs font-bold text-[#E0DED7] uppercase tracking-wider flex items-center gap-1.5">
+                  <Mail className="w-4 h-4 text-[#C5A059]" />
+                  Submit Report (1-Page PDF Attached)
+                </div>
+                {emailStatus === 'error' && (
+                  <span className="text-xs text-[#FF4E4E] flex items-center gap-1.5 font-semibold bg-[#141414] px-3 py-1 rounded-full border border-[#FF4E4E]/40">
+                    <AlertTriangle className="w-4 h-4" /> {statusDetails || 'Error sending email'}
+                  </span>
+                )}
               </div>
 
-              {/* Quick 1-Click Sending Shortcuts: Gmail Webmail + Device Share (Apple Mail/Outlook) */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-3 border-t border-[#2D2D2D]/60">
-                {/* 1. Gmail Webmail 1-Click Compose */}
-                <button
-                  type="button"
-                  id="open-in-gmail-btn"
-                  onClick={handleOpenGmailWeb}
-                  className="w-full bg-[#141414] hover:bg-[#252525] border border-[#C5A059] text-[#C5A059] font-bold text-xs px-4 py-2.5 rounded-full transition-all flex items-center justify-center gap-2 shadow-sm"
-                >
-                  <Mail className="w-4 h-4" />
-                  <span>Send via Gmail (Auto-Compose)</span>
-                </button>
+              <form onSubmit={handleSend} className="flex flex-col gap-3">
+                <div className="flex flex-col sm:flex-row items-center gap-2">
+                  <input
+                    id="report-recipient-email-input"
+                    type="email"
+                    required
+                    placeholder="evangelosneobarberis@gmail.com, insurance adjuster, or customer email"
+                    value={recipientEmail}
+                    onChange={e => setRecipientEmail(e.target.value)}
+                    className="w-full sm:flex-1 bg-[#141414] border border-[#2D2D2D] text-[#E0DED7] text-xs px-4 py-3 rounded-full focus:outline-none focus:border-[#C5A059] placeholder-[#555]"
+                  />
+                  <button
+                    id="send-report-server-btn"
+                    type="submit"
+                    disabled={isSending || !recipientEmail.trim()}
+                    className="w-full sm:w-auto bg-[#C5A059] hover:bg-[#b59049] disabled:opacity-50 text-[#0F0F0F] font-bold text-xs px-6 py-3 rounded-full transition-all flex items-center justify-center gap-2 whitespace-nowrap shadow-md active:scale-95"
+                  >
+                    {isSending ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Send className="w-4 h-4" />
+                    )}
+                    Submit Report
+                  </button>
+                </div>
 
-                {/* 2. Device Native Share / Mail with PDF attached */}
-                <button
-                  type="button"
-                  id="share-pdf-device-btn"
-                  onClick={handleSharePdfWithDevice}
-                  className="w-full bg-[#141414] hover:bg-[#252525] border border-[#3D3D3D] hover:border-[#C5A059] text-[#E0DED7] font-semibold text-xs px-4 py-2.5 rounded-full transition-all flex items-center justify-center gap-2 shadow-sm"
-                >
-                  <Share2 className="w-4 h-4 text-[#C5A059]" />
-                  <span>Share / Attach to Mail App</span>
-                </button>
-              </div>
-            </form>
-          </div>
+                {/* Quick 1-Click Sending Shortcuts: Gmail Webmail + Device Share (Apple Mail/Outlook) */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-3 border-t border-[#2D2D2D]/60">
+                  {/* 1. Gmail Webmail 1-Click Compose */}
+                  <button
+                    type="button"
+                    id="open-in-gmail-btn"
+                    onClick={handleOpenGmailWeb}
+                    className="w-full bg-[#141414] hover:bg-[#252525] border border-[#C5A059] text-[#C5A059] font-bold text-xs px-4 py-2.5 rounded-full transition-all flex items-center justify-center gap-2 shadow-sm"
+                  >
+                    <Mail className="w-4 h-4" />
+                    <span>Send via Gmail (Auto-Compose)</span>
+                  </button>
+
+                  {/* 2. Device Native Share / Mail with PDF attached */}
+                  <button
+                    type="button"
+                    id="share-pdf-device-btn"
+                    onClick={handleSharePdfWithDevice}
+                    className="w-full bg-[#141414] hover:bg-[#252525] border border-[#3D3D3D] hover:border-[#C5A059] text-[#E0DED7] font-semibold text-xs px-4 py-2.5 rounded-full transition-all flex items-center justify-center gap-2 shadow-sm"
+                  >
+                    <Share2 className="w-4 h-4 text-[#C5A059]" />
+                    <span>Share / Attach to Mail App</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -180,12 +180,19 @@ export const VinScannerModal: React.FC<VinScannerModalProps> = ({
     }
   };
 
-  // Start Camera Scanning with live barcode/QR decoding
-  const startCameraScanner = async () => {
+  // Start Camera Scanning with live barcode/QR decoding.
+  // Just flips the state - the actual camera/decoder setup happens in the
+  // useEffect below, which only runs *after* React has mounted the <video>
+  // element. Doing the setup inline here was a race condition: getUserMedia
+  // can resolve before the video element exists, silently aborting the scan.
+  const startCameraScanner = () => {
     setIsScanning(true);
     setErrorMsg(null);
     setCameraDenied(null);
     setScanStatus('Point the camera at the VIN barcode or QR code');
+  };
+
+  const openCameraAndScan = async () => {
     try {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         throw new Error('Camera access is not supported in this browser.');
@@ -241,6 +248,15 @@ export const VinScannerModal: React.FC<VinScannerModalProps> = ({
     setIsScanning(false);
   };
 
+  // Runs the actual camera/decoder startup once isScanning flips true, which
+  // guarantees the <video> element is already mounted and videoRef is set.
+  useEffect(() => {
+    if (isScanning) {
+      openCameraAndScan();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isScanning]);
+
   useEffect(() => {
     return () => {
       stopCameraScanner();
@@ -261,10 +277,10 @@ export const VinScannerModal: React.FC<VinScannerModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0F0F0F]/85 backdrop-blur-md overflow-y-auto animate-fade-in">
-      <div className="relative w-full max-w-2xl bg-[#141414] border border-[#2D2D2D] rounded-2xl shadow-2xl overflow-hidden flex flex-col my-8">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-[#0F0F0F]/85 backdrop-blur-md animate-fade-in">
+      <div className="relative w-full max-w-2xl max-h-[92vh] bg-[#141414] border border-[#2D2D2D] rounded-2xl shadow-2xl overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="px-6 py-4 bg-[#141414] border-b border-[#2D2D2D] flex items-center justify-between">
+        <div className="px-4 sm:px-6 py-4 bg-[#141414] border-b border-[#2D2D2D] flex items-center justify-between shrink-0 sticky top-0 z-20">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-[#1F1F1F] border border-[#3D3D3D] flex items-center justify-center text-[#C5A059]">
               <Car className="w-5 h-5" />
@@ -295,10 +311,10 @@ export const VinScannerModal: React.FC<VinScannerModalProps> = ({
         </div>
 
         {/* Body */}
-        <div className="p-6 space-y-6 bg-[#141414]">
+        <div className="p-4 sm:p-6 space-y-6 bg-[#141414] overflow-y-auto flex-1 min-h-0">
           {/* Live Camera Scanner View */}
           {isScanning ? (
-            <div className="relative rounded-2xl overflow-hidden bg-black aspect-video flex flex-col items-center justify-center border-2 border-[#C5A059]/50 shadow-2xl">
+            <div className="relative rounded-2xl overflow-hidden bg-black aspect-[4/3] sm:aspect-video max-h-[45vh] mx-auto flex flex-col items-center justify-center border-2 border-[#C5A059]/50 shadow-2xl">
               <video
                 ref={videoRef}
                 className="w-full h-full object-cover"
@@ -307,8 +323,8 @@ export const VinScannerModal: React.FC<VinScannerModalProps> = ({
               />
 
               {/* Viewfinder Target & Laser Scanning Animation */}
-              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none p-6">
-                <div className="w-4/5 h-28 border-2 border-[#C5A059] rounded-xl relative shadow-lg">
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none p-4 sm:p-6">
+                <div className="w-4/5 h-20 sm:h-28 border-2 border-[#C5A059] rounded-xl relative shadow-lg">
                   {/* Corner accents */}
                   <div className="absolute -top-1 -left-1 w-4 h-4 border-t-4 border-l-4 border-[#C5A059]" />
                   <div className="absolute -top-1 -right-1 w-4 h-4 border-t-4 border-r-4 border-[#C5A059]" />
@@ -483,7 +499,7 @@ export const VinScannerModal: React.FC<VinScannerModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 bg-[#141414] border-t border-[#2D2D2D] flex items-center justify-between">
+        <div className="px-4 sm:px-6 py-4 bg-[#141414] border-t border-[#2D2D2D] flex items-center justify-between shrink-0">
           <button
             onClick={() => {
               stopCameraScanner();
